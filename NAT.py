@@ -18,7 +18,7 @@ PUBLIC_IP = "192.168.1.1"
 # Use "icmp" to test icmp only
 # Use "tcp port 80" to test tcp only
 # FILTER = "icmp or tcp port 80"
-FILTER = "icmp or tcp or udp"
+FILTER = "udp"
 
 # COPY NATTable HERE
 class NATTable:
@@ -66,170 +66,175 @@ icmp_mapping = NATTable()
 tcp_mapping = NATTable()
 
 def process_pkt_private(pkt: Packet):
-    # Reference: https://stackoverflow.com/questions/819355/how-can-i-check-if-an-ip-is-in-a-network-in-python
-    if ip_address(pkt[IP].src) not in ip_network(PRIVATE_IP_subnet):
-        return # we sniffed a packet we are sending to the subnet, ignore
-
-    print("received pkt from private interface", pkt.sniffed_on, pkt.summary())
-    #incoming
-    #if its outgoing, use NAT Table
-    pkt[Ether].src      # accessing a field in the Ether Layer, not necessary for this lab
-
-    # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L502
-    pkt[IP].src         # accessing a field in the IP Layer
-
     try:
-        # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L874
-        pkt[ICMP].id    # accessing a field in the ICMP Layer, will fail in a TCP packet
-    
-        # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L678
-        pkt[TCP].sport  # accessing a field in the TCP Layer, will fail in a ICMP packet
-    except:
-        pass
+        # Reference: https://stackoverflow.com/questions/819355/how-can-i-check-if-an-ip-is-in-a-network-in-python
+        if ip_address(pkt[IP].src) not in ip_network(PRIVATE_IP_subnet):
+            return # we sniffed a packet we are sending to the subnet, ignore
 
-    src_ip = pkt[IP].src
-    dst_ip = pkt[IP].dst
+        print("received pkt from private interface", pkt.sniffed_on, pkt.summary())
+        #incoming
+        #if its outgoing, use NAT Table
+        pkt[Ether].src      # accessing a field in the Ether Layer, not necessary for this lab
 
-    # https://scapy.readthedocs.io/en/latest/usage.html#stacking-layers
-    # Stack a new packet like so
-    # IP(src="xxx.xxx.xxx.xxx", dst="xxx.xxx.xxx.xxx", ttl=???) / ptk[TCP or ICMP, depends on pkt]
-    # if its outgoing, look at the two things below
-    if ICMP in pkt:
-        print('\tICMP Packet captured on private interface')
+        # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L502
+        pkt[IP].src         # accessing a field in the IP Layer
+
+        try:
+            # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L874
+            pkt[ICMP].id    # accessing a field in the ICMP Layer, will fail in a TCP packet
         
-        src_id = pkt[ICMP].id
-        
-        # Add it into icmp_mapping, if it doesn't already exist
-        # remember: icmp does not handle ports
-        pub_ip, pub_id = icmp_mapping.set(src_ip, src_id)
+            # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L678
+            pkt[TCP].sport  # accessing a field in the TCP Layer, will fail in a ICMP packet
+        except:
+            pass
 
-        # Make new packet by updating Network Layer header, using public IP, public src (the ICMP id), and info from pkt
-        pkt[ICMP].id = pub_id
-        icmp_header = ICMP(id=pub_id, code=0, type=8)
-        new_pkt = IP(src=pub_ip, dst=dst_ip) / icmp_header
-    elif TCP in pkt:
-        print('\tTCP Packet captured on private interface')
-        
-        src_port = pkt[TCP].sport
+        src_ip = pkt[IP].src
+        dst_ip = pkt[IP].dst
 
-        # remember: TCP does handle ports
+        # https://scapy.readthedocs.io/en/latest/usage.html#stacking-layers
+        # Stack a new packet like so
+        # IP(src="xxx.xxx.xxx.xxx", dst="xxx.xxx.xxx.xxx", ttl=???) / ptk[TCP or ICMP, depends on pkt]
+        # if its outgoing, look at the two things below
+        if ICMP in pkt:
+            print('\tICMP Packet captured on private interface')
+            
+            src_id = pkt[ICMP].id
+            
+            # Add it into icmp_mapping, if it doesn't already exist
+            # remember: icmp does not handle ports
+            pub_ip, pub_id = icmp_mapping.set(src_ip, src_id)
 
-        # Add it into icmp_mapping, if it doesn't already exist
-        pub_ip, pub_sport = tcp_mapping.set(src_ip, src_port)
+            # Make new packet by updating Network Layer header, using public IP, public src (the ICMP id), and info from pkt
+            pkt[ICMP].id = pub_id
+            icmp_header = ICMP(id=pub_id, code=0, type=8)
+            new_pkt = IP(src=pub_ip, dst=dst_ip) / icmp_header
+        elif TCP in pkt:
+            print('\tTCP Packet captured on private interface')
+            
+            src_port = pkt[TCP].sport
 
-        # UNDERSTAND: don't worry about internal, sending only private packets to public packets
-        # NEW TCP HEADER PASS SRC PORT AND DST PORT
-        # SAVE MESSAGE
-        # CAPTURE ANY APPLICATION LAYER PACKETS
-        dst_port = pkt[TCP].dport
-        tcp_header = TCP(sport=pub_sport, dport=dst_port) # transport layer header
+            # remember: TCP does handle ports
 
-        new_pkt = IP(src=pub_ip, dst=dst_ip) / tcp_header / pkt[TCP].payload
-        print("T: ", pkt.show())
-    elif UDP in pkt:
-        print('\tUDP Packet captured on private interface')
-        
-        src_port = pkt[UDP].sport
+            # Add it into icmp_mapping, if it doesn't already exist
+            pub_ip, pub_sport = tcp_mapping.set(src_ip, src_port)
 
-        pub_ip, pub_sport = tcp_mapping.set(src_ip, src_port)
+            # UNDERSTAND: don't worry about internal, sending only private packets to public packets
+            # NEW TCP HEADER PASS SRC PORT AND DST PORT
+            # SAVE MESSAGE
+            # CAPTURE ANY APPLICATION LAYER PACKETS
+            dst_port = pkt[TCP].dport
+            tcp_header = TCP(sport=pub_sport, dport=dst_port) # transport layer header
 
-        dst_port = pkt[UDP].dport
-        udp_header = UDP(sport=pub_sport, dport=dst_port) # transport layer header
+            new_pkt = IP(src=pub_ip, dst=dst_ip) / tcp_header / pkt[TCP].payload
+            print("T: ", pkt.show())
+        elif UDP in pkt:
+            print('\tUDP Packet captured on private interface')
+            
+            src_port = pkt[UDP].sport
 
-        new_pkt = IP(src=pub_ip, dst=dst_ip) / udp_header / pkt[UDP].payload
+            pub_ip, pub_sport = tcp_mapping.set(src_ip, src_port)
+
+            dst_port = pkt[UDP].dport
+            udp_header = UDP(sport=pub_sport, dport=dst_port) # transport layer header
+
+            new_pkt = IP(src=pub_ip, dst=dst_ip) / udp_header / pkt[UDP].payload
 
 
-    # create a new pkt depending on what is being requested
-    # keep track of new and current connections inside a data structure
+        # create a new pkt depending on what is being requested
+        # keep track of new and current connections inside a data structure
 
-    # make sure to send new packet to the correct network interface
-    send(new_pkt, iface=PUBLIC_IFACE, verbose=False)
+        # make sure to send new packet to the correct network interface
+        send(new_pkt, iface=PUBLIC_IFACE, verbose=False)
+    except Exception as e:
+        print("ERROR: ", e)
 
 def process_pkt_public(pkt: Packet):
-    if pkt[IP].src == PUBLIC_IP:
-        return # skip unecessary packets
-    print("received pkt from public interface", pkt.sniffed_on, pkt.summary())
-    #incoming
-    #if its outgoing, use NAT Table
-    pkt[Ether].src      # accessing a field in the Ether Layer, not necessary for this lab
-
-    # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L502
-    pkt[IP].src         # accessing a field in the IP Layer
-
     try:
-        # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L874
-        pkt[ICMP].id    # accessing a field in the ICMP Layer, will fail in a TCP packet
-    
-        # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L678
-        pkt[TCP].sport  # accessing a field in the TCP Layer, will fail in a ICMP packet
-    except:
-        pass
-    
-    dst_ip = pkt[IP].dst
-    src_ip = pkt[IP].src
+        if pkt[IP].src == PUBLIC_IP:
+            return # skip unecessary packets
+        print("received pkt from public interface", pkt.sniffed_on, pkt.summary())
+        #incoming
+        #if its outgoing, use NAT Table
+        pkt[Ether].src      # accessing a field in the Ether Layer, not necessary for this lab
 
-    # https://scapy.readthedocs.io/en/latest/usage.html#stacking-layers
-    # Stack a new packet like so
-    # IP(src="xxx.xxx.xxx.xxx", dst="xxx.xxx.xxx.xxx", ttl=???) / ptk[TCP or ICMP, depends on pkt]
-    # if its outgoing, look at the two things below
-    if ICMP in pkt:
-        print('\tICMP Packet captured on public interface')
+        # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L502
+        pkt[IP].src         # accessing a field in the IP Layer
+
+        try:
+            # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L874
+            pkt[ICMP].id    # accessing a field in the ICMP Layer, will fail in a TCP packet
         
-        id = pkt[ICMP].id
+            # https://github.com/secdev/scapy/blob/v2.4.5/scapy/layers/inet.py#L678
+            pkt[TCP].sport  # accessing a field in the TCP Layer, will fail in a ICMP packet
+        except:
+            pass
+        
+        dst_ip = pkt[IP].dst
+        src_ip = pkt[IP].src
 
-        # Add it into icmp_mapping, if it doesn't already exist
-        # remember: icmp does not handle ports
-        private_mapping = icmp_mapping.get(dst_ip, id)
-        if private_mapping is None:
-            return
-        else:
-            priv_ip, priv_id = private_mapping
+        # https://scapy.readthedocs.io/en/latest/usage.html#stacking-layers
+        # Stack a new packet like so
+        # IP(src="xxx.xxx.xxx.xxx", dst="xxx.xxx.xxx.xxx", ttl=???) / ptk[TCP or ICMP, depends on pkt]
+        # if its outgoing, look at the two things below
+        if ICMP in pkt:
+            print('\tICMP Packet captured on public interface')
+            
+            id = pkt[ICMP].id
 
-        # Make new packet by updating Network Layer header, using public IP, public src (the ICMP id), and info from pkt
-        pkt[ICMP].id = priv_id
-        new_pkt = IP(src=src_ip, dst=priv_ip) / pkt[ICMP]
+            # Add it into icmp_mapping, if it doesn't already exist
+            # remember: icmp does not handle ports
+            private_mapping = icmp_mapping.get(dst_ip, id)
+            if private_mapping is None:
+                return
+            else:
+                priv_ip, priv_id = private_mapping
 
-    elif TCP in pkt:
-        print('\tTCP Packet captured on private interface')
+            # Make new packet by updating Network Layer header, using public IP, public src (the ICMP id), and info from pkt
+            pkt[ICMP].id = priv_id
+            new_pkt = IP(src=src_ip, dst=priv_ip) / pkt[ICMP]
 
-        src_port = pkt[TCP].sport
-        dst_port = pkt[TCP].dport
+        elif TCP in pkt:
+            print('\tTCP Packet captured on private interface')
 
-        # Add it into icmp_mapping, if it doesn't already exist
+            src_port = pkt[TCP].sport
+            dst_port = pkt[TCP].dport
 
-        private_mapping = cp_mapping.get(dst_ip, dst_port)
-        if private_mapping is None:
-            return
-        else:
-            priv_ip, priv_id = private_mapping
+            # Add it into icmp_mapping, if it doesn't already exist
 
-        # UNDERSTAND: don't worry about internal, sending only private packets to public packets
-        # NEW TCP HEADER PASS SRC PORT AND DST PORT
-        # SAVE MESSAGE
-        # CAPTURE ANY APPLICATION LAYER PACKETS
-        tcp_header = TCP(sport=src_port, dport=priv_sport) # transport layer header
+            private_mapping = cp_mapping.get(dst_ip, dst_port)
+            if private_mapping is None:
+                return
+            else:
+                priv_ip, priv_sport = private_mapping
+
+            # UNDERSTAND: don't worry about internal, sending only private packets to public packets
+            # NEW TCP HEADER PASS SRC PORT AND DST PORT
+            # SAVE MESSAGE
+            # CAPTURE ANY APPLICATION LAYER PACKETS
+            tcp_header = TCP(sport=src_port, dport=priv_sport) # transport layer header
 
 
-        new_pkt = IP(src=src_ip, dst=priv_ip) / tcp_header / pkt[TCP].payload
-    elif UDP in pkt:
-        print('\tUDP Packet captured on private interface')
+            new_pkt = IP(src=src_ip, dst=priv_ip) / tcp_header / pkt[TCP].payload
+        elif UDP in pkt:
+            print('\tUDP Packet captured on private interface')
 
-        src_port = pkt[UDP].sport
-        dst_port = pkt[UDP].dport
+            src_port = pkt[UDP].sport
+            dst_port = pkt[UDP].dport
 
-        private_mapping = tcp_mapping.get(dst_ip, dst_port)
-        if private_mapping is None:
-            return
-        else:
-            priv_ip, priv_id = private_mapping
+            private_mapping = tcp_mapping.get(dst_ip, dst_port)
+            if private_mapping is None:
+                return
+            else:
+                priv_ip, priv_sport = private_mapping
 
-        udp_header = UDP(sport=src_port, dport=priv_sport)
+            udp_header = UDP(sport=src_port, dport=priv_sport)
 
-        new_pkt = IP(src=src_ip, dst=priv_ip) / udp_header / pkt[UDP].payload
+            new_pkt = IP(src=src_ip, dst=priv_ip) / udp_header / pkt[UDP].payload
 
-    # make sure to send new packet to the correct network interface
-    send(new_pkt, iface=PRIVATE_IFACE, verbose=False)
-
+        # make sure to send new packet to the correct network interface
+        send(new_pkt, iface=PRIVATE_IFACE, verbose=False)
+    except Exception as e:
+        print("ERROR: ", e) 
 
 def private_listener():
     print("sniffing packets on the private interface")
