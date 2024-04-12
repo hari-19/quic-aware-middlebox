@@ -41,7 +41,7 @@ class NetworkTopo(Topo):
 def run():
     topo = NetworkTopo()
     net = Mininet(topo=topo)
-
+    info(net['d1'].cmd("ip addr add 10.0.0.45 dev d1-eth0"))
     # info(net.get("r1").sendCmd("python3 NAT.py"))
 
     net.start()
