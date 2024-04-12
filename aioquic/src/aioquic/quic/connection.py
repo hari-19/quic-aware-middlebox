@@ -64,6 +64,7 @@ from .packet_builder import (
 )
 from .recovery import QuicPacketRecovery, QuicPacketSpace
 from .stream import FinalSizeError, QuicStream, StreamFinishedError
+from .cid_track import post_cid_config
 
 logger = logging.getLogger("quic")
 
@@ -1249,6 +1250,8 @@ class QuicConnection:
             dump_cid(self._peer_cid.cid),
             self._peer_cid.sequence_number,
         )
+
+        post_cid_config(self._original_destination_connection_id, self._peer_cid.cid)
 
     def _close_begin(self, is_initiator: bool, now: float) -> None:
         """

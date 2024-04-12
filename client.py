@@ -87,12 +87,20 @@ async def main(
             ) as client:
                 client = cast(DosClientProtocol, client)
 
-                await change_transport(client, "::ffff:10.0.0.45" , 11853)
                 with open("data.txt", "r") as f:
                     data = f.read()
                     await client.send(data)
+
                 
                 await client.send("END")
+
+                # Wait for the peer to send cid
+                while(len(client._quic._peer_cid_available) == 0 and client._quic._state != QuicConnectionState.CLOSING):
+                    await asyncio.sleep(0.01)
+                
+                await change_transport(client, "::ffff:10.0.0.45" , 11853)
+                client.change_connection_id()
+                
                 await client.wait_closed()
         except ConnectionError:
             print("EXCEPTION: Connection Error")

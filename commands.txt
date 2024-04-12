@@ -1,1 +1,3 @@
 ./venv/bin/python server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v
+
+./venv/bin/python client.py --host 192.168.1.100 --port 1000 -v
