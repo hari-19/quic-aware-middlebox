@@ -7,6 +7,7 @@ from scapy.sendrecv import send, sniff
 from scapy.layers.inet import TCP, IP, Ether, ICMP, UDP
 from scapy.layers.http import HTTP
 from ipaddress import IPv4Interface, ip_network, ip_address
+from quic_dissector import quic_dcid
 
 PRIVATE_IFACE = "r1-eth1"
 PRIVATE_IP = "10.0.0.1"
@@ -130,6 +131,8 @@ def process_pkt_private(pkt: Packet):
         elif UDP in pkt:
             print('\tUDP Packet captured on private interface')
             
+            quic_dcid(pkt)
+
             src_port = pkt[UDP].sport
 
             pub_ip, pub_sport = tcp_mapping.set(src_ip, src_port)

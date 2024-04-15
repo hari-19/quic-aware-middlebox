@@ -4,3 +4,5 @@ test.py
 main2.py
 received.txt
 *log*
+
+__pycache__/
