@@ -25,6 +25,7 @@ AGENT_PORT = 12001
 # FILTER = "icmp or tcp port 80"
 FILTER = "tcp or icmp or udp"
 
+
 def get_gcid_from_agent(cid: bytes):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -58,7 +59,29 @@ class NATTable:
     def _random_id(self):
         return random.randint(30001, 65535)
 
+    def print_mappings(self):
+        print("Printing all mappings...")
+        print("No of mappings:", len(self.data))
+        for key, value in self.data.items():
+            print(key, " : ", value)
+        print("End of mappings")
+
+        print("Printing all QUIC GCID - LAN mappings...")
+        print("No of mappings:", len(self.quic_lan_map))
+        for key, value in self.quic_lan_map.items():
+            print(key.hex(), " : ", value)
+        print("End of mappings")
+
+        print("Printing all QUIC CID - GCID mappings...")
+        print("No of mappings:", len(self.quic_cids))
+        for key, value in self.quic_cids.items():
+            print(key.hex(), " : ", value)
+        print("End of mappings")
+
+
+
     def set(self, ip_src, id_src) -> Tuple[str, int]:
+        self.print_mappings()
 
         new_ip_src = PUBLIC_IP #this is the WAN connection so it should be public so everyone will see it
 
@@ -81,6 +104,7 @@ class NATTable:
 
 
     def get(self, ip_dst, id_dst) -> Tuple[str, int]:
+        self.print_mappings()
         key_tuple = (ip_dst, id_dst)
         
         if key_tuple in self.data:
@@ -88,6 +112,7 @@ class NATTable:
         return None 
 
     def quic_set(self, ip_src, id_src, dst_cid) -> Tuple[str, int]:
+        self.print_mappings()
 
         new_ip_src = PUBLIC_IP #this is the WAN connection so it should be public so everyone will see it
 
@@ -105,15 +130,27 @@ class NATTable:
         else:
             # get gcid from agent
             gcid = get_gcid_from_agent(dst_cid)
+            if gcid is not None:
+                self.quic_cids.update({dst_cid: gcid})
 
         # if gcid is not in the quic_cids, it means that gcid is new
+        print("DCID: ", dst_cid.hex())
         if gcid is None:
             gcid = dst_cid
 
+        print("GCID: ", gcid.hex())
+        
+        if gcid not in self.quic_cids.keys():
+            print("GCID not in keys", gcid.hex())
+        
         if gcid in self.quic_lan_map.keys():
             quic_lan_tup = self.quic_lan_map[gcid]
             if quic_lan_tup != lan_tup:
+                print("QUIC: Updating LAN mapping")
                 self.quic_lan_map[gcid] = lan_tup
+        else:
+            print("QUIC: Adding new LAN mapping")
+            self.quic_lan_map.update({gcid: lan_tup})
 
         # If no mapping, then assume to be new lan_tup
         if quic_lan_tup is None:

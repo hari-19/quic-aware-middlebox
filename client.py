@@ -98,9 +98,14 @@ async def main(
                 while(len(client._quic._peer_cid_available) == 0 and client._quic._state != QuicConnectionState.CLOSING):
                     await asyncio.sleep(0.01)
                 
-                await change_transport(client, "::ffff:10.0.0.45" , 11853)
-                client.change_connection_id()
-                
+                for port in range(10000, 63000):
+                    await change_transport(client, "::ffff:10.0.0.45" , port)
+                    client.change_connection_id()
+                    print("Changed to port: ", port)    
+                    # time.sleep(10)
+                    time.sleep(1)
+                    # asyncio.sleep(10)
+
                 await client.wait_closed()
         except ConnectionError:
             print("EXCEPTION: Connection Error")
