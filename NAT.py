@@ -8,6 +8,7 @@ from scapy.layers.inet import TCP, IP, Ether, ICMP, UDP
 from scapy.layers.http import HTTP
 from ipaddress import IPv4Interface, ip_network, ip_address
 from quic_dissector import quic_dcid
+import socket
 
 PRIVATE_IFACE = "r1-eth1"
 PRIVATE_IP = "10.0.0.1"
@@ -16,12 +17,34 @@ PRIVATE_IP_subnet = "10.0.0.0/24"
 PUBLIC_IFACE = "r1-eth2"
 PUBLIC_IP = "192.168.1.1"
 
+AGENT_IP = "10.0.0.22"
+AGENT_PORT = 12001
+
 # Use "icmp" to test icmp only
 # Use "tcp port 80" to test tcp only
 # FILTER = "icmp or tcp port 80"
-FILTER = "udp"
+FILTER = "tcp or icmp or udp"
 
-# COPY NATTable HERE
+def get_gcid_from_agent(cid: bytes):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.sendto(cid, (AGENT_IP, AGENT_PORT))
+        print("CID sent to configuration agent succefully")
+        message, address = sock.recvfrom(1024)
+        global_cid = message
+        if not global_cid:
+            print("Received message:", global_cid.hex())
+            return None
+        print("Recieved GCID from Agent", global_cid.hex())
+        return global_cid
+    except Exception as e:
+        print("Error sending CID to configuration agent")
+        print(e)
+    finally:
+        sock.close()
+
+    return None
+
 class NATTable:
 
     def __init__(self):
@@ -29,6 +52,8 @@ class NATTable:
     # = WORK HERE = ... DONE
     # IMPLEMENT THIS ... DONE
         self.data = {}
+        self.quic_cids = {}
+        self.quic_lan_map = {}
     
     def _random_id(self):
         return random.randint(30001, 65535)
@@ -62,15 +87,71 @@ class NATTable:
             return self.data[key_tuple]
         return None 
 
+    def quic_set(self, ip_src, id_src, dst_cid) -> Tuple[str, int]:
+
+        new_ip_src = PUBLIC_IP #this is the WAN connection so it should be public so everyone will see it
+
+        wanList = list(self.data.keys())
+        lanList = list(self.data.values())
+
+        lan_tup = (ip_src, id_src) ##create a dummy tuple to see if its in the list of lanAddresses and Ports
+
+        gcid = None
+        quic_lan_tup = None
+
+        # check quic data for cid
+        if dst_cid in self.quic_cids.keys():
+            gcid = self.quic_cids[dst_cid]
+        else:
+            # get gcid from agent
+            gcid = get_gcid_from_agent(dst_cid)
+
+        # if gcid is not in the quic_cids, it means that gcid is new
+        if gcid is None:
+            gcid = dst_cid
+
+        if gcid in self.quic_lan_map.keys():
+            quic_lan_tup = self.quic_lan_map[gcid]
+            if quic_lan_tup != lan_tup:
+                self.quic_lan_map[gcid] = lan_tup
+
+        # If no mapping, then assume to be new lan_tup
+        if quic_lan_tup is None:
+            quic_lan_tup = lan_tup
+
+        # Seach for mapping
+        if quic_lan_tup in lanList:
+            i = lanList.index(quic_lan_tup)        #Get index of the tuple location 
+            new_id_src=wanList[i][1]   #retrieve corresponding wan port number and set it as the port number for same key/value
+        else:
+            new_id_src = self._random_id()  #if not found, just make a random port number
+        
+        wan_tup = (new_ip_src, new_id_src)
+
+
+        self.data.update({wan_tup: lan_tup}) #Append the whole thing in one big dictionary
+
+        return new_ip_src, new_id_src
+
 
 icmp_mapping = NATTable()
-tcp_mapping = NATTable()
+tcp_udp_mapping = NATTable()
 
 def process_pkt_private(pkt: Packet):
     try:
+        # print("Source:", pkt[IP].src, "Destination:", pkt[IP].dst)
         # Reference: https://stackoverflow.com/questions/819355/how-can-i-check-if-an-ip-is-in-a-network-in-python
         if ip_address(pkt[IP].src) not in ip_network(PRIVATE_IP_subnet):
             return # we sniffed a packet we are sending to the subnet, ignore
+
+
+        if ip_address(pkt[IP].src) == ip_address(PRIVATE_IP):
+            # print("We sniffed a packet we are sending")
+            return
+
+        if ip_address(pkt[IP].src) == ip_address(AGENT_IP):
+            # print("We sniffed a packet we are sending to agent")
+            return
 
         print("received pkt from private interface", pkt.sniffed_on, pkt.summary())
         #incoming
@@ -117,7 +198,7 @@ def process_pkt_private(pkt: Packet):
             # remember: TCP does handle ports
 
             # Add it into icmp_mapping, if it doesn't already exist
-            pub_ip, pub_sport = tcp_mapping.set(src_ip, src_port)
+            pub_ip, pub_sport = tcp_udp_mapping.set(src_ip, src_port)
 
             # UNDERSTAND: don't worry about internal, sending only private packets to public packets
             # NEW TCP HEADER PASS SRC PORT AND DST PORT
@@ -131,11 +212,17 @@ def process_pkt_private(pkt: Packet):
         elif UDP in pkt:
             print('\tUDP Packet captured on private interface')
             
-            quic_dcid(pkt)
+            dcid = quic_dcid(pkt)
 
             src_port = pkt[UDP].sport
 
-            pub_ip, pub_sport = tcp_mapping.set(src_ip, src_port)
+            if dcid is not None:
+                print("QUIC Packet")
+                pub_ip, pub_sport = tcp_udp_mapping.quic_set(src_ip, src_port, dcid)
+            else:
+                pub_ip, pub_sport = tcp_udp_mapping.set(src_ip, src_port)
+
+            print("UDP Mapping: ", pub_ip, pub_sport)
 
             dst_port = pkt[UDP].dport
             udp_header = UDP(sport=pub_sport, dport=dst_port) # transport layer header
@@ -224,7 +311,7 @@ def process_pkt_public(pkt: Packet):
             src_port = pkt[UDP].sport
             dst_port = pkt[UDP].dport
 
-            private_mapping = tcp_mapping.get(dst_ip, dst_port)
+            private_mapping = tcp_udp_mapping.get(dst_ip, dst_port)
             if private_mapping is None:
                 return
             else:

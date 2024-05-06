@@ -28,9 +28,9 @@ class NetworkTopo(Topo):
         self.addLink(s1, r1, intfName2='r1-eth1', params2={'ip': '10.0.0.1/24'})
 
         # Adding hosts specifying the default route
-        d1 = self.addHost(name='d1', ip='10.0.0.21/24', defaultRoute='via 10.0.0.1')
-        d2 = self.addHost(name='d2', ip='10.0.0.22/24', defaultRoute='via 10.0.0.1')
-        d3 = self.addHost(name='d3', ip='192.168.1.100/24', defaultRoute='via 192.168.1.1')
+        d1 = self.addHost(name='client', ip='10.0.0.21/24', defaultRoute='via 10.0.0.1')
+        d2 = self.addHost(name='agent', ip='10.0.0.22/24', defaultRoute='via 10.0.0.1')
+        d3 = self.addHost(name='server', ip='192.168.1.100/24', defaultRoute='via 192.168.1.1')
 
         # Add host-switch links
         self.addLink(d1, s1)
@@ -41,7 +41,9 @@ class NetworkTopo(Topo):
 def run():
     topo = NetworkTopo()
     net = Mininet(topo=topo)
-    info(net['d1'].cmd("ip addr add 10.0.0.45 dev d1-eth0"))
+    info(net['client'].cmd("ip addr add 10.0.0.45 dev client-eth0"))
+    # info(net['r1'].cmd("./venv/bin/python3 NAT.py"))
+    # info(net['agent'].cmd("./venv/bin/python3 configuration_agent.py"))
     # info(net.get("r1").sendCmd("python3 NAT.py"))
 
     net.start()

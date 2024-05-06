@@ -1250,8 +1250,8 @@ class QuicConnection:
             dump_cid(self._peer_cid.cid),
             self._peer_cid.sequence_number,
         )
-
-        post_cid_config(self._original_destination_connection_id, self._peer_cid.cid)
+        if self._is_client:
+            post_cid_config(self._original_destination_connection_id, self._peer_cid.cid)
 
     def _close_begin(self, is_initiator: bool, now: float) -> None:
         """

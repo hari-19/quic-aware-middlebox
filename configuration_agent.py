@@ -50,11 +50,14 @@ def get_config_thread():
 
     while True:
         message, address = server_socket.recvfrom(1024)
+        print("Received message: ", message.hex())
         global_cid = get_cid(message)
         
         if global_cid is not None:
+            print("Sending global_cid: ", global_cid.hex())
             server_socket.sendto(global_cid, address)
         else:
+            print("Sending None global_cid")
             server_socket.sendto(bytes(0), address)
 
 def main():

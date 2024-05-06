@@ -21,7 +21,7 @@ def quic_long_heuristic(udp_payload):
     # Check QUIC Version
     version = udp_payload[1:5]
     if(int.from_bytes(version, "big") != 0x1):
-        print("Version Mismatch")
+        print("Version Mismatch", version.hex())
 
     offset = 5
     # DCID Length Check
