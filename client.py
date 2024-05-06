@@ -99,9 +99,11 @@ async def main(
                     await asyncio.sleep(0.01)
                 
                 for port in range(10000, 63000):
-                    await change_transport(client, "::ffff:10.0.0.45" , port)
                     client.change_connection_id()
+                    await change_transport(client, "::ffff:10.0.0.45" , port)
                     print("Changed to port: ", port)    
+                    while(len(client._quic._peer_cid_available) == 0 and client._quic._state != QuicConnectionState.CLOSING):
+                        await asyncio.sleep(0.01)
                     # time.sleep(10)
                     time.sleep(1)
                     # asyncio.sleep(10)
