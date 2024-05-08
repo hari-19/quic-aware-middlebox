@@ -4,7 +4,7 @@ from mininet.net import Mininet
 from mininet.node import Node
 from mininet.log import setLogLevel, info
 from mininet.cli import CLI
-
+import time
 
 # class LinuxRouter(Node):
 #     def config(self, **params):
@@ -41,14 +41,17 @@ class NetworkTopo(Topo):
 def run():
     topo = NetworkTopo()
     net = Mininet(topo=topo)
-    info(net['client'].cmd("ip addr add 10.0.0.45 dev client-eth0"))
-    # info(net['r1'].cmd("./venv/bin/python3 NAT.py"))
-    # info(net['agent'].cmd("./venv/bin/python3 configuration_agent.py"))
-    # info(net.get("r1").sendCmd("python3 NAT.py"))
-
     net.start()
-    # info(net.get("r1").cmd("python3 NAT.py"))
-    CLI(net)
+    net['client'].cmdPrint("ip addr add 10.0.0.45 dev client-eth0")
+    net['r1'].cmd("./venv/bin/python3 NAT.py > nat_log.txt  &")
+    time.sleep(1)
+    net['agent'].cmdPrint("./venv/bin/python3 configuration_agent.py > agent_log.txt &")
+    time.sleep(1)
+    net["server"].cmdPrint("./venv/bin/python server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 > client_log.txt &")
+    time.sleep(1)
+    net["client"].cmdPrint("./venv/bin/python client.py --host 192.168.1.100 --port 1000 -v > server_log.txt")
+
+    # CLI(net)
     net.stop()
 
 
