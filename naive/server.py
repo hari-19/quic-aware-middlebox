@@ -110,6 +110,8 @@ if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
         level=logging.DEBUG if args.verbose else logging.INFO,
+        filename="logs/server.log",
+        filemode="w"
     )
 
     # create QUIC logger

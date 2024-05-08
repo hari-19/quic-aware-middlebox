@@ -309,7 +309,7 @@ class QuicConnection:
         self.host_cid = self._host_cids[0].cid
         self._host_cid_seq = 1
         self._local_ack_delay_exponent = 3
-        self._local_active_connection_id_limit = 8
+        self._local_active_connection_id_limit = 100
         self._local_initial_source_connection_id = self._host_cids[0].cid
         self._local_max_data = Limit(
             frame_type=QuicFrameType.MAX_DATA,
@@ -2495,7 +2495,8 @@ class QuicConnection:
         """
         Generate new connection IDs.
         """
-        while len(self._host_cids) < min(8, self._remote_active_connection_id_limit):
+        # while len(self._host_cids) < min(8, self._remote_active_connection_id_limit):
+        while len(self._host_cids) < min(100, self._remote_active_connection_id_limit):
             self._host_cids.append(
                 QuicConnectionId(
                     cid=os.urandom(self._configuration.connection_id_length),

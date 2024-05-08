@@ -64,11 +64,15 @@ async def change_transport(protocol: QuicConnectionProtocol, new_addr, new_port)
     old_socket.close()
 
 
-
+def is_closed(client):
+    if client._quic._state in  [QuicConnectionState.CLOSING, QuicConnectionState.DRAINING, QuicConnectionState.TERMINATED]:
+        return True
+    else:
+        return False
+        
 async def main(
     host: str,
-    port: int,
-    transport_addr: list
+    port: int
 ) -> None:
     logger.debug(f"Connecting to {host}:{port}")
 
@@ -95,18 +99,19 @@ async def main(
                 await client.send("END")
 
                 # Wait for the peer to send cid
-                while(len(client._quic._peer_cid_available) == 0 and client._quic._state != QuicConnectionState.CLOSING):
-                    await asyncio.sleep(0.01)
+                while(len(client._quic._peer_cid_available) == 0 and not is_closed(client)):
+                    await asyncio.sleep(1)
                 
                 for port in range(10000, 63000):
+                    if is_closed(client):
+                        break
                     client.change_connection_id()
                     await change_transport(client, "::ffff:10.0.0.45" , port)
-                    print("Changed to port: ", port)    
-                    while(len(client._quic._peer_cid_available) == 0 and client._quic._state != QuicConnectionState.CLOSING):
-                        await asyncio.sleep(0.01)
-                    # time.sleep(10)
-                    time.sleep(1)
-                    # asyncio.sleep(10)
+                    logger.debug(f"Changed transport to {port}")
+                    client.transmit() 
+                    while(len(client._quic._peer_cid_available) == 0 and not is_closed(client)):
+                        await asyncio.sleep(1)
+                    await asyncio.sleep(0.5)
 
                 await client.wait_closed()
         except ConnectionError:
@@ -133,18 +138,13 @@ if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
         level=logging.DEBUG if args.verbose else logging.INFO,
+        filename="logs/client.log",
+        filemode="w"
     )
-
     
-    transport = []
-    for ipLast in range(128, 134):
-        for port in range(30000, 64000):
-            transport.append(("192.168.40." + str(ipLast), port))
-
     asyncio.run(
             main(
                 host=args.host,
                 port=args.port,
-                transport_addr = transport
         )
     )

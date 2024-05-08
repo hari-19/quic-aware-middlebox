@@ -9,6 +9,9 @@ from scapy.layers.http import HTTP
 from ipaddress import IPv4Interface, ip_network, ip_address
 from quic_dissector import quic_dcid
 import socket
+import os
+import time
+import datetime
 
 PRIVATE_IFACE = "r1-eth1"
 PRIVATE_IP = "10.0.0.1"
@@ -24,6 +27,12 @@ AGENT_PORT = 12001
 # Use "tcp port 80" to test tcp only
 # FILTER = "icmp or tcp port 80"
 FILTER = "tcp or icmp or udp"
+
+def print(*args):
+    with open("logs/nat_log.txt", "a") as f:
+        for arg in args:
+            f.write(str(arg) + " ")
+        f.write("\n")
 
 
 def get_gcid_from_agent(cid: bytes):
@@ -55,34 +64,52 @@ class NATTable:
         self.data = {}
         self.quic_cids = {}
         self.quic_lan_map = {}
+        self.prev_port = 15000
     
     def _random_id(self):
-        return random.randint(30001, 65535)
+        # Return Next Available Port Number
+        if self.prev_port == 65535:
+            raise Exception("NAT Table Full")
+        self.prev_port += 1
+        return self.prev_port
+        # return random.randint(30001, 65535)
 
     def print_mappings(self):
-        print("Printing all mappings...")
-        print("No of mappings:", len(self.data))
-        for key, value in self.data.items():
-            print(key, " : ", value)
-        print("End of mappings")
+        with open("logs/nat_mappings.txt", "w") as f:
+            now = datetime.datetime.now()
+            f.write("Last Updated: "+ str(now) +"\n")
+            f.write("No of mappings:" + str(len(self.data)) + "\n")
+            bound_line = "-"*72
+            line = "|{:^15} | {:^15} | {:^15} | {:^15} |".format("LAN IP", "LAN PORT", "WAN IP", "WAN PORT")
+            f.write(bound_line + "\n")
+            f.write(line + "\n")
+            f.write(bound_line + "\n")
+            for key, value in self.data.items():
+                line = "|{:^15} | {:^15} | {:^15} | {:^15} |".format(value[0], value[1], key[0], key[1])
+                # f.write(bound_line + "\n")
+                f.write(line + "\n")
+                f.write(bound_line + "\n")
 
-        print("Printing all QUIC GCID - LAN mappings...")
-        print("No of mappings:", len(self.quic_lan_map))
-        for key, value in self.quic_lan_map.items():
-            print(key.hex(), " : ", value)
-        print("End of mappings")
+        # print("Printing all mappings...")
+        # for key, value in self.data.items():
+        #     print(key, " : ", value)
+        # print("End of mappings")
 
-        print("Printing all QUIC CID - GCID mappings...")
-        print("No of mappings:", len(self.quic_cids))
-        for key, value in self.quic_cids.items():
-            print(key.hex(), " : ", value)
-        print("End of mappings")
+        # print("Printing all QUIC GCID - LAN mappings...")
+        # print("No of mappings:", len(self.quic_lan_map))
+        # for key, value in self.quic_lan_map.items():
+        #     print(key.hex(), " : ", value)
+        # print("End of mappings")
+
+        # print("Printing all QUIC CID - GCID mappings...")
+        # print("No of mappings:", len(self.quic_cids))
+        # for key, value in self.quic_cids.items():
+        #     print(key.hex(), " : ", value)
+        # print("End of mappings")
 
 
 
     def set(self, ip_src, id_src) -> Tuple[str, int]:
-        self.print_mappings()
-
         new_ip_src = PUBLIC_IP #this is the WAN connection so it should be public so everyone will see it
 
         wanList = list(self.data.keys())
@@ -104,7 +131,6 @@ class NATTable:
 
 
     def get(self, ip_dst, id_dst) -> Tuple[str, int]:
-        self.print_mappings()
         key_tuple = (ip_dst, id_dst)
         
         if key_tuple in self.data:
@@ -112,7 +138,6 @@ class NATTable:
         return None 
 
     def quic_set(self, ip_src, id_src, dst_cid) -> Tuple[str, int]:
-        self.print_mappings()
 
         new_ip_src = PUBLIC_IP #this is the WAN connection so it should be public so everyone will see it
 
@@ -374,14 +399,31 @@ def public_listener():
 
 
 def main():
+    try:
+        os.mkdir("logs")
+    except FileExistsError:
+        pass
+    
+    with open("logs/nat_log.txt", "w") as f:
+        f.write("")
+
     thread1 = Thread(target=private_listener)
     thread2 = Thread(target=public_listener)
+
+    def print_mapping_loop():
+        while True:
+            tcp_udp_mapping.print_mappings()
+            time.sleep(0.1)
+
+    thread3 = Thread(target=print_mapping_loop)
 
     print("starting multiple sniffing threads...")
     thread1.start()
     thread2.start()
+    thread3.start()
     thread1.join()
     thread2.join()
+    thread3.join()
 
 
 main()
