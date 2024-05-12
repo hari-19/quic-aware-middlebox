@@ -1,6 +1,7 @@
 from mininet.log import setLogLevel, info
 from naive_nat.setup import NetworkTopo
 from quic_nat.setup import NATNetworkTopo
+from quic_rl.setup import QUICRLNetworkTopo
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.node import Node
@@ -55,13 +56,33 @@ def run_naive_rl():
     time.sleep(1)
     net["client"].cmdPrint("./venv/bin/python ./naive_rl/client.py --host 192.168.1.100 --port 1000 -v")
     # CLI(net)
+    net.stop()
 
+def run_quic_rl():
+    topo = QUICRLNetworkTopo()
+    net = Mininet(topo=topo, link=TCLink)
+    net.start()
+    net['r1'].setMAC("66:e0:87:7d:d9:a4", intf="r1-eth1")
+    net['r1'].setMAC("66:e0:87:7d:d9:b5", intf="r1-eth2")
+    net['client'].cmdPrint("ip addr add 10.0.0.45 dev client-eth0")
+    net["server"].cmdPrint("ip route add 10.0.0.0/24 via 192.168.1.1 dev server-eth0")
+    # net["client"].cmdPrint("ip route add 192.168.0.0/16 via 10.0.0.1 dev client-eth0")
+    time.sleep(1)
+    net['agent'].cmdPrint("./venv/bin/python3 ./quic_rl/agent.py &")
+    time.sleep(1)
+    net['r1'].cmdPrint("./venv/bin/python3 ./quic_rl/rl.py &")
+    time.sleep(1)
+    net["server"].cmdPrint("./venv/bin/python ./quic_rl/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
+    time.sleep(1)
+    net["client"].cmdPrint("./venv/bin/python ./quic_rl/client.py --host 192.168.1.100 --port 1000 -v")
+    CLI(net)
     net.stop()
 
 def get_choice():
     print("1. Run Emulation of Exiting Implementation using NAT")
-    print("2. Run Emulation of Proposed Implementation using NAT")
-    print("3. Run Emulation of Existing Implementation using RL")
+    print("2. Run Emulation of Existing Implementation using RL")
+    print("3. Run Emulation of Proposed Implementation using NAT")
+    print("4. Run Emulation of Proposed Implementation using RL")
     return int(input("Enter your choice: "))
     # return 3
 
@@ -77,8 +98,10 @@ if __name__ == "__main__":
         case 1:
             run_naive_nat()
         case 2:
-            run_quic_nat()
-        case 3:
             run_naive_rl()
+        case 3:
+            run_quic_nat()
+        case 4:
+            run_quic_rl()
         case _:
             print("Invalid choice")
