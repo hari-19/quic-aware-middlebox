@@ -75,7 +75,6 @@ def run_quic_rl():
     net["server"].cmdPrint("./venv/bin/python ./quic_rl/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
     time.sleep(1)
     net["client"].cmdPrint("./venv/bin/python ./quic_rl/client.py --host 192.168.1.100 --port 1000 -v")
-    CLI(net)
     net.stop()
 
 def get_choice():
