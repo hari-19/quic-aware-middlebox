@@ -12,7 +12,8 @@ class QUICRLNetworkTopo(Topo):
         r1 = self.addHost('r1', ip=None)
         # Add 3 switches
         s1 = self.addSwitch('s1')
-        s2 = self.addSwitch('s2')
+        # s2 = self.addSwitch('s2')
+        
         # Add host-switch links in the same subnet for each router
         self.addLink(s1, r1, intfName2='r1-eth1', params2={'ip': '10.0.0.1/24'})
 
@@ -24,5 +25,6 @@ class QUICRLNetworkTopo(Topo):
         # Add host-switch links
         self.addLink(d1, s1)
         self.addLink(d2, s1)
-        self.addLink(d3, s2, params1={'ip': '192.168.1.100/24'})
-        self.addLink(s2, r1, intfName2='r1-eth2', params2={'ip': '192.168.1.1/24'})
+        self.addLink(d3, r1, intfName2='r1-eth2', params2={'ip': '192.168.1.1/24'}, params1={'ip': '192.168.1.100/24'})
+        # self.addLink(d3, s2, params1={'ip': '192.168.1.100/24'})
+        # self.addLink(s2, r1, intfName2='r1-eth2', params2={'ip': '192.168.1.1/24'})

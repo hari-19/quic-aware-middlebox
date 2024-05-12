@@ -65,7 +65,7 @@ def run_quic_rl():
     net['r1'].setMAC("66:e0:87:7d:d9:a4", intf="r1-eth1")
     net['r1'].setMAC("66:e0:87:7d:d9:b5", intf="r1-eth2")
     net['client'].cmdPrint("ip addr add 10.0.0.45 dev client-eth0")
-    net["server"].cmdPrint("ip route add 10.0.0.0/24 via 192.168.1.1 dev server-eth0")
+    # net["server"].cmdPrint("ip route add 10.0.0.0/24 via 192.168.1.1 dev server-eth0")
     # net["client"].cmdPrint("ip route add 192.168.0.0/16 via 10.0.0.1 dev client-eth0")
     time.sleep(1)
     net['agent'].cmdPrint("./venv/bin/python3 ./quic_rl/agent.py &")
