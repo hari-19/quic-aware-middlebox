@@ -11,6 +11,7 @@ from mininet.link import TCLink
 import time
 import os
 from naive_rl.setup import RLNetworkTopo
+from custom_topo.setup import CustomNetworkTopo
 
 def run_naive_nat():
     topo = NetworkTopo()
@@ -77,13 +78,20 @@ def run_quic_rl():
     net["client"].cmdPrint("./venv/bin/python ./quic_rl/client.py --host 192.168.1.100 --port 1000 -v")
     net.stop()
 
+def run_custom_topo():
+    topo = CustomNetworkTopo(1, 1)
+    net = Mininet(topo=topo)
+    net.start()
+    CLI(net)
+    net.stop()
+
 def get_choice():
     print("1. Run Emulation of Exiting Implementation using NAT")
     print("2. Run Emulation of Existing Implementation using RL")
     print("3. Run Emulation of Proposed Implementation using NAT")
     print("4. Run Emulation of Proposed Implementation using RL")
     return int(input("Enter your choice: "))
-    # return 3
+    # return 5
 
 if __name__ == "__main__":
     setLogLevel('info')
@@ -102,5 +110,7 @@ if __name__ == "__main__":
             run_quic_nat()
         case 4:
             run_quic_rl()
+        case 5:
+            run_custom_topo()
         case _:
             print("Invalid choice")
