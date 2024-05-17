@@ -77,13 +77,57 @@ def run_quic_rl():
     net["client"].cmdPrint("./venv/bin/python ./quic_rl/client.py --host 192.168.1.100 --port 1000 -v")
     net.stop()
 
+def run_naive_nat_processing_time():
+    topo = NetworkTopo()
+    net = Mininet(topo=topo, link=TCLink)
+    net.start()
+    net['r1'].cmdPrint("./venv/bin/python3 ./processing_time/NAT.py &")
+    time.sleep(1)
+    net["server"].cmdPrint("./venv/bin/python ./processing_time/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
+    time.sleep(1)
+    for i in range(10):
+        net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
+    net.stop()
+
+def run_quic_nat_processing_time():
+    topo = NATNetworkTopo()
+    net = Mininet(topo=topo, link=TCLink)
+    net.start()
+    net['r1'].cmdPrint("./venv/bin/python3 ./processing_time/quic_NAT.py &")
+    time.sleep(1)
+    net['agent'].cmdPrint("./venv/bin/python3 ./quic_nat/agent.py &")
+    time.sleep(1)
+    net["server"].cmdPrint("./venv/bin/python ./processing_time/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
+    time.sleep(1)
+    # for i in range(10):
+        # net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
+    
+    for i in range(500):
+        net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
+    net.stop()
+
+
+def run_naive_nat_throughput():
+    topo = NATNetworkTopo()
+    net = Mininet(topo=topo, link=TCLink)
+    net.start()
+    net['r1'].cmdPrint("./venv/bin/python3 ./quic_nat/NAT.py &")
+    # net['r1'].cmdPrint("./venv/bin/python3 ./naive_nat/NAT.py &")
+    time.sleep(1)
+    net['agent'].cmdPrint("./venv/bin/python3 ./quic_nat/agent.py &")
+    time.sleep(1)
+    net["server"].cmdPrint("./venv/bin/python ./throughput/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
+    time.sleep(1)
+    net["client"].cmdPrint("./venv/bin/python ./throughput/client.py --host 192.168.1.100 --port 1000 -v")
+    net.stop()
+
 def get_choice():
     print("1. Run Emulation of Exiting Implementation using NAT")
     print("2. Run Emulation of Existing Implementation using RL")
     print("3. Run Emulation of Proposed Implementation using NAT")
     print("4. Run Emulation of Proposed Implementation using RL")
-    return int(input("Enter your choice: "))
-    # return 3
+    # return int(input("Enter your choice: "))
+    return 6
 
 if __name__ == "__main__":
     setLogLevel('info')
@@ -102,5 +146,11 @@ if __name__ == "__main__":
             run_quic_nat()
         case 4:
             run_quic_rl()
+        case 5:
+            run_naive_nat_throughput()
+        case 6:
+            run_naive_nat_processing_time()
+        case 7:
+            run_quic_nat_processing_time()
         case _:
             print("Invalid choice")
