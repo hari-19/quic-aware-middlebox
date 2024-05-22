@@ -11,6 +11,7 @@ from mininet.link import TCLink
 import time
 import os
 from naive_rl.setup import RLNetworkTopo
+from throughput.setup import TwoNATNetworkTopo, ThreeNATNetworkTopo, two_nat_ip_route, three_nat_ip_route, OneNetworkTopo, FourNATNetworkTopo, four_nat_ip_route, FiveNATNetworkTopo, five_nat_ip_route, OneNATNetworkTopo
 
 def run_naive_nat():
     topo = NetworkTopo()
@@ -147,17 +148,50 @@ def run_quic_latency():
 
 
 def run_naive_nat_throughput():
-    topo = NATNetworkTopo()
+    # topo = OneNetworkTopo()
+    # topo = NATNetworkTopo()
+    # topo = TwoNATNetworkTopo()
+    # topo = ThreeNATNetworkTopo()
+    # topo = FourNATNetworkTopo()
+    # topo = FiveNATNetworkTopo()
+    topo = OneNATNetworkTopo()
     net = Mininet(topo=topo, link=TCLink)
+    # three_nat_ip_route(net)
+    # two_nat_ip_route(net)
+    # four_nat_ip_route(net)
+    # five_nat_ip_route(net)
     net.start()
-    net['r1'].cmdPrint("./venv/bin/python3 ./quic_nat/NAT.py &")
-    # net['r1'].cmdPrint("./venv/bin/python3 ./naive_nat/NAT.py &")
-    time.sleep(1)
-    net['agent'].cmdPrint("./venv/bin/python3 ./quic_nat/agent.py &")
-    time.sleep(1)
-    net["server"].cmdPrint("./venv/bin/python ./throughput/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
-    time.sleep(1)
-    net["client"].cmdPrint("./venv/bin/python ./throughput/client.py --host 192.168.1.100 --port 1000 -v")
+    # net['r1'].cmdPrint("./venv/bin/python3 ./quic_nat/NAT.py &")
+    # # net['r1'].cmdPrint("./venv/bin/python3 ./naive_nat/NAT.py &")
+    # time.sleep(1)
+    # net['agent'].cmdPrint("./venv/bin/python3 ./quic_nat/agent.py &")
+    # time.sleep(1)
+    # net["server"].cmdPrint("./venv/bin/python ./throughput/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
+    # time.sleep(1)
+    # net["client"].cmdPrint("./venv/bin/python ./throughput/client.py --host 192.168.1.100 --port 1000 -v")
+    
+    # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "10.0.0.1" --publicIp "192.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.0.0/24" 
+
+    # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "10.0.1.1" --publicIp "172.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.1.0/24" 
+    # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "172.168.1.2" --publicIp "192.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r2-eth1" --publicIface "r2-eth2" --privateSubnet "172.168.1.0/24" 
+
+   # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "10.0.1.1" --publicIp "172.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.1.0/24" 
+    # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "172.168.1.2" --publicIp "90.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r2-eth1" --publicIface "r2-eth2" --privateSubnet "172.168.1.0/24" 
+       # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "90.168.1.2" --publicIp "192.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r3-eth1" --publicIface "r3-eth2" --privateSubnet "90.168.1.0/24" 
+
+   # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "10.0.1.1" --publicIp "172.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.1.0/24" 
+    # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "172.168.1.2" --publicIp "90.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r2-eth1" --publicIface "r2-eth2" --privateSubnet "172.168.1.0/24" 
+       # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "90.168.1.2" --publicIp "100.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r3-eth1" --publicIface "r3-eth2" --privateSubnet "90.168.1.0/24" 
+     #  ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "100.168.1.2" --publicIp "192.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r4-eth1" --publicIface "r4-eth2" --privateSubnet "100.168.1.0/24" 
+
+
+   # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "10.0.1.1" --publicIp "172.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.1.0/24" 
+    # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "172.168.1.2" --publicIp "90.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r2-eth1" --publicIface "r2-eth2" --privateSubnet "172.168.1.0/24" 
+       # ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "90.168.1.2" --publicIp "100.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r3-eth1" --publicIface "r3-eth2" --privateSubnet "90.168.1.0/24" 
+     #  ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "100.168.1.2" --publicIp "110.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r4-eth1" --publicIface "r4-eth2" --privateSubnet "100.168.1.0/24" 
+         #  ./venv/bin/python3 ./throughput/quic_NAT.py --privateIp "110.168.1.2" --publicIp "192.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r5-eth1" --publicIface "r5-eth2" --privateSubnet "110.168.1.0/24" 
+
+    CLI(net)
     net.stop()
 
 def get_choice():
@@ -166,7 +200,7 @@ def get_choice():
     print("3. Run Emulation of Proposed Implementation using NAT")
     print("4. Run Emulation of Proposed Implementation using RL")
     # return int(input("Enter your choice: "))
-    return 8
+    return 5
 
 if __name__ == "__main__":
     setLogLevel('info')

@@ -11,7 +11,7 @@ import socket
 import os
 import time
 import datetime
-from hwcounter import Timer
+# from hwcounter import Timer
 
 PRIVATE_IFACE = "r1-eth1"
 PRIVATE_IP = "10.0.0.1"
@@ -42,7 +42,7 @@ class NATTable:
     # = WORK HERE = ... DONE
     # IMPLEMENT THIS ... DONE
         self.data = {}
-        self.prev_port = 15000
+        self.prev_port = 5000
     
     def _random_id(self):
         # Return Next Available Port Number
@@ -104,7 +104,9 @@ tcp_udp_mapping = NATTable()
 
 def process_pkt_private(pkt: Packet):
     try:
-        with Timer() as t:
+        # with Timer() as t:
+            # type_of_operation = "New Entry"
+        if True:
             # print("Source:", pkt[IP].src, "Destination:", pkt[IP].dst)
             # Reference: https://stackoverflow.com/questions/819355/how-can-i-check-if-an-ip-is-in-a-network-in-python
             if ip_address(pkt[IP].src) not in ip_network(PRIVATE_IP_subnet):
@@ -194,8 +196,8 @@ def process_pkt_private(pkt: Packet):
 
             # make sure to send new packet to the correct network interface
             send(new_pkt, iface=PUBLIC_IFACE, verbose=False)
-        with open("naive_cycles.txt", "a") as f:
-            f.write(str(t.cycles) + "\n")
+        # with open("naive_cycles.txt", "a") as f:
+            # f.write(str(t.cycles) + "\n")
     except Exception as e:
         print("ERROR: ", e)
 
@@ -319,10 +321,10 @@ def main():
     print("starting multiple sniffing threads...")
     thread1.start()
     thread2.start()
-    thread3.start()
+    # thread3.start()
     thread1.join()
     thread2.join()
-    thread3.join()
+    # thread3.join()
 
 
 main()
