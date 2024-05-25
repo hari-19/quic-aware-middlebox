@@ -79,71 +79,78 @@ def run_quic_rl():
     net.stop()
 
 def run_naive_nat_processing_time():
-    topo = NetworkTopo()
+    topo = OneNATNetworkTopo()
     net = Mininet(topo=topo, link=TCLink)
     net.start()
-    net['r1'].cmdPrint("./venv/bin/python3 ./processing_time/NAT.py &")
+    net['r1'].cmdPrint('./venv/bin/python3 ./online/default_NAT_proc.py --privateIp "10.0.0.1" --publicIp "192.168.1.1" --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.0.0/24" &')
+    time.sleep(1)
+    net["server"].cmdPrint("./venv/bin/python ./processing_time/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
+    time.sleep(1)
+    time.sleep(1)
+    for i in range(10):
+        net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
+    
+    for i in range(50):
+        net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
+    net.stop()
+
+
+def run_quic_nat_processing_time():
+    topo = OneNATNetworkTopo()
+    net = Mininet(topo=topo, link=TCLink)
+    net.start()
+    net['agent'].cmdPrint("./venv/bin/python3 ./online/agent.py &")
+    time.sleep(1)
+    net['r1'].cmdPrint('./venv/bin/python3 ./online/quic_NAT_proc.py --privateIp "10.0.0.1" --publicIp "192.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.0.0/24" &')
     time.sleep(1)
     net["server"].cmdPrint("./venv/bin/python ./processing_time/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
     time.sleep(1)
     for i in range(10):
         net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
-    net.stop()
-
-def run_quic_nat_processing_time():
-    topo = NATNetworkTopo()
-    net = Mininet(topo=topo, link=TCLink)
-    net.start()
-    net['r1'].cmdPrint("./venv/bin/python3 ./processing_time/quic_NAT.py &")
-    time.sleep(1)
-    net['agent'].cmdPrint("./venv/bin/python3 ./quic_nat/agent.py &")
-    time.sleep(1)
-    net["server"].cmdPrint("./venv/bin/python ./processing_time/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
-    time.sleep(1)
-    # for i in range(10):
-        # net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
     
-    for i in range(500):
+    for i in range(50):
         net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
     net.stop()
 
-def run_quic_latency():
-    topo = NATNetworkTopo()
-    net = Mininet(topo=topo, link=TCLink)
-    net.start()
-    net['r1'].cmdPrint("./venv/bin/python3 ./latency/quic_NAT.py &")
-    time.sleep(1)
-    net['agent'].cmdPrint("./venv/bin/python3 ./quic_nat/agent.py &")
-    time.sleep(1)
-    net["server"].cmdPrint("./venv/bin/python ./latency/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
-    time.sleep(1)
-    net["client"].cmdPrint("./venv/bin/python ./latency/client.py --host 192.168.1.100 --port 1000 -v")
-    
-    # for i in range(10):
-        # net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
-    
-    # for i in range(500):
-        # net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
-    net.stop()
 
+# def run_quic_nat_processing_time():
+#     topo = NATNetworkTopo()
+#     net = Mininet(topo=topo, link=TCLink)
+#     net.start()
+#     net['r1'].cmdPrint("./venv/bin/python3 ./processing_time/quic_NAT.py &")
+#     time.sleep(1)
+#     net['agent'].cmdPrint("./venv/bin/python3 ./quic_nat/agent.py &")
+#     time.sleep(1)
+#     net["server"].cmdPrint("./venv/bin/python ./processing_time/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
+#     time.sleep(1)
+#     # for i in range(10):
+#         # net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
+    
+#     for i in range(500):
+#         net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
+#     net.stop()
 
 def run_quic_latency():
-    topo = NetworkTopo()
+    topo = OneNATNetworkTopo()
     net = Mininet(topo=topo, link=TCLink)
     net.start()
-    net['r1'].cmdPrint("./venv/bin/python3 ./latency/NAT.py &")
+
+    net['agent'].cmdPrint("./venv/bin/python3 ./offline/agent.py &")
     time.sleep(1)
-    # net['agent'].cmdPrint("./venv/bin/python3 ./quic_nat/agent.py &")
+    net['r1'].cmdPrint('./venv/bin/python3 ./offline/quic_NAT.py --privateIp "10.0.0.1" --publicIp "192.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.0.0/24" &')
+    time.sleep(1)
+
+    # net['r1'].cmdPrint('./venv/bin/python3 ./online/quic_NAT.py --privateIp "10.0.0.1" --publicIp "192.168.1.1" --agentIp "10.0.0.22" --agentPort 12001 --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.0.0/24" &')
+    # time.sleep(1)
+    # net['agent'].cmdPrint("./venv/bin/python3 ./online/agent.py &")
+    # time.sleep(1)
+
+    # net['r1'].cmdPrint('./venv/bin/python3 ./online/default_NAT.py --privateIp "10.0.0.1" --publicIp "192.168.1.1" --privateIface "r1-eth1" --publicIface "r1-eth2" --privateSubnet "10.0.0.0/24" &')
     # time.sleep(1)
     net["server"].cmdPrint("./venv/bin/python ./latency/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
     time.sleep(1)
     net["client"].cmdPrint("./venv/bin/python ./latency/client.py --host 192.168.1.100 --port 1000 -v")
     
-    # for i in range(10):
-        # net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
-    
-    # for i in range(500):
-        # net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
     net.stop()
 
 
@@ -153,13 +160,13 @@ def run_naive_nat_throughput():
     # topo = TwoNATNetworkTopo()
     # topo = ThreeNATNetworkTopo()
     # topo = FourNATNetworkTopo()
-    # topo = FiveNATNetworkTopo()
-    topo = OneNATNetworkTopo()
+    topo = FiveNATNetworkTopo()
+    # topo = OneNATNetworkTopo()
     net = Mininet(topo=topo, link=TCLink)
     # three_nat_ip_route(net)
     # two_nat_ip_route(net)
     # four_nat_ip_route(net)
-    # five_nat_ip_route(net)
+    five_nat_ip_route(net)
     net.start()
     # net['r1'].cmdPrint("./venv/bin/python3 ./quic_nat/NAT.py &")
     # # net['r1'].cmdPrint("./venv/bin/python3 ./naive_nat/NAT.py &")
@@ -200,7 +207,7 @@ def get_choice():
     print("3. Run Emulation of Proposed Implementation using NAT")
     print("4. Run Emulation of Proposed Implementation using RL")
     # return int(input("Enter your choice: "))
-    return 5
+    return 8
 
 if __name__ == "__main__":
     setLogLevel('info')

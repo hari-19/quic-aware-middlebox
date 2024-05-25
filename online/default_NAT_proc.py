@@ -12,49 +12,23 @@ import socket
 import os
 import time
 import datetime
+import argparse
 from hwcounter import Timer
 
-PRIVATE_IFACE = "r1-eth1"
-PRIVATE_IP = "10.0.0.1"
-PRIVATE_IP_subnet = "10.0.0.0/24"
-
-PUBLIC_IFACE = "r1-eth2"
-PUBLIC_IP = "192.168.1.1"
-
-AGENT_IP = "10.0.0.22"
-AGENT_PORT = 12001
 
 # Use "icmp" to test icmp only
 # Use "tcp port 80" to test tcp only
 # FILTER = "icmp or tcp port 80"
 FILTER = "tcp or icmp or udp"
 
-def print(*args):
-    with open("logs/nat_log.txt", "a") as f:
-        for arg in args:
-            f.write(str(arg) + " ")
-        f.write("\n")
+# def #print(*args):
+#     with open("logs/nat_log.txt", "a") as f:
+#         for arg in args:
+#             f.write(str(arg) + " ")
+#         f.write("\n")
 
-
-def get_gcid_from_agent(cid: bytes):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        sock.sendto(cid, (AGENT_IP, AGENT_PORT))
-        print("CID sent to configuration agent succefully")
-        message, address = sock.recvfrom(1024)
-        global_cid = message
-        if not global_cid:
-            print("Received message:", global_cid.hex())
-            return None
-        print("Recieved GCID from Agent", global_cid.hex())
-        return global_cid
-    except Exception as e:
-        print("Error sending CID to configuration agent")
-        print(e)
-    finally:
-        sock.close()
-
-    return None
+# def #print(*args):
+#     pass
 
 class NATTable:
 
@@ -65,13 +39,13 @@ class NATTable:
         self.data = {}
         self.quic_cids = {}
         self.quic_lan_map = {}
-        self.prev_port = 5000
+        self.prev_port = 15000
     
     def _random_id(self):
         # Return Next Available Port Number
         if self.prev_port == 65535:
             # raise Exception("NAT Table Full")
-            self.prev_port = 5000
+            self.prev_port = 15000
         self.prev_port += 1
         return self.prev_port
         # return random.randint(30001, 65535)
@@ -92,55 +66,26 @@ class NATTable:
                 f.write(line + "\n")
                 f.write(bound_line + "\n")
 
-        # print("Printing all mappings...")
+        # #print("Printing all mappings...")
         # for key, value in self.data.items():
-        #     print(key, " : ", value)
-        # print("End of mappings")
+        #     #print(key, " : ", value)
+        # #print("End of mappings")
 
-        # print("Printing all QUIC GCID - LAN mappings...")
-        # print("No of mappings:", len(self.quic_lan_map))
+        # #print("Printing all QUIC GCID - LAN mappings...")
+        # #print("No of mappings:", len(self.quic_lan_map))
         # for key, value in self.quic_lan_map.items():
-        #     print(key.hex(), " : ", value)
-        # print("End of mappings")
+        #     #print(key.hex(), " : ", value)
+        # #print("End of mappings")
 
-        # print("Printing all QUIC CID - GCID mappings...")
-        # print("No of mappings:", len(self.quic_cids))
+        # #print("Printing all QUIC CID - GCID mappings...")
+        # #print("No of mappings:", len(self.quic_cids))
         # for key, value in self.quic_cids.items():
-        #     print(key.hex(), " : ", value)
-        # print("End of mappings")
+        #     #print(key.hex(), " : ", value)
+        # #print("End of mappings")
 
 
 
     def set(self, ip_src, id_src) -> Tuple[str, int]:
-        new_ip_src = PUBLIC_IP #this is the WAN connection so it should be public so everyone will see it
-
-        wanList = list(self.data.keys())
-        lanList = list(self.data.values())
-
-        lan_tup = (ip_src, id_src) ##create a dummy tuple to see if its in the list of lanAddresses and Ports
-        if lan_tup in lanList:
-            i = lanList.index(lan_tup)        #Get index of the tuple location 
-            new_id_src =wanList[i][1]   #retrieve corresponding wan port number and set it as the port number for same key/value
-        else:
-            new_id_src = self._random_id()  #if not found, just make a random port number
-        
-        wan_tup = (new_ip_src, new_id_src)
-
-
-        self.data.update({wan_tup: lan_tup}) #Append the whole thing in one big dictionary
-
-        return new_ip_src, new_id_src
-
-
-    def get(self, ip_dst, id_dst) -> Tuple[str, int]:
-        key_tuple = (ip_dst, id_dst)
-        
-        if key_tuple in self.data:
-            return self.data[key_tuple]
-        return None 
-
-    def quic_set(self, ip_src, id_src, dst_cid) -> Tuple[str, int]:
-        
         new_ip_src = PUBLIC_IP #this is the WAN connection so it should be public so everyone will see it
 
         type_of_operation = "New Entry"
@@ -149,52 +94,10 @@ class NATTable:
         lanList = list(self.data.values())
 
         lan_tup = (ip_src, id_src) ##create a dummy tuple to see if its in the list of lanAddresses and Ports
-
-        gcid = None
-        quic_lan_tup = None
-
-        # check quic data for cid
-        if dst_cid in self.quic_cids.keys():
-            gcid = self.quic_cids[dst_cid]
-        else:
-            # get gcid from agent
-            gcid = get_gcid_from_agent(dst_cid)
-            if gcid is not None:
-                self.quic_cids.update({dst_cid: gcid})
-            else:
-                self.quic_cids.update({dst_cid: dst_cid})
-
-        # if gcid is not in the quic_cids, it means that gcid is new
-        print("DCID: ", dst_cid.hex())
-        if gcid is None:
-            gcid = dst_cid
-
-        print("GCID: ", gcid.hex())
-        
-        if gcid not in self.quic_cids.keys():
-            print("GCID not in keys", gcid.hex())
-        
-        if gcid in self.quic_lan_map.keys():
-            quic_lan_tup = self.quic_lan_map[gcid]
-            if quic_lan_tup != lan_tup:
-                print("QUIC: Updating LAN mapping")
-                type_of_operation = "Update Entry"
-                self.quic_lan_map[gcid] = lan_tup
-            else:
-                type_of_operation = "Lookup"
-        else:
-            print("QUIC: Adding new LAN mapping")
-            self.quic_lan_map.update({gcid: lan_tup})
-            type_of_operation = "New Entry"
-
-        # If no mapping, then assume to be new lan_tup
-        if quic_lan_tup is None:
-            quic_lan_tup = lan_tup
-
-        # Seach for mapping
-        if quic_lan_tup in lanList:
-            i = lanList.index(quic_lan_tup)        #Get index of the tuple location 
-            new_id_src=wanList[i][1]   #retrieve corresponding wan port number and set it as the port number for same key/value
+        if lan_tup in lanList:
+            i = lanList.index(lan_tup)        #Get index of the tuple location 
+            new_id_src =wanList[i][1]   #retrieve corresponding wan port number and set it as the port number for same key/value
+            type_of_operation = "Lookup"
         else:
             new_id_src = self._random_id()  #if not found, just make a random port number
         
@@ -206,28 +109,32 @@ class NATTable:
         return new_ip_src, new_id_src, type_of_operation
 
 
+    def get(self, ip_dst, id_dst) -> Tuple[str, int]:
+        key_tuple = (ip_dst, id_dst)
+        
+        if key_tuple in self.data:
+            return self.data[key_tuple]
+        return None 
+
+
 icmp_mapping = NATTable()
 tcp_udp_mapping = NATTable()
 
 def process_pkt_private(pkt: Packet):
     try:
         with Timer() as t:
-        # if True:
-            # print("Source:", pkt[IP].src, "Destination:", pkt[IP].dst)
+            # #print("Source:", pkt[IP].src, "Destination:", pkt[IP].dst)
             # Reference: https://stackoverflow.com/questions/819355/how-can-i-check-if-an-ip-is-in-a-network-in-python
             if ip_address(pkt[IP].src) not in ip_network(PRIVATE_IP_subnet):
                 return # we sniffed a packet we are sending to the subnet, ignore
 
 
             if ip_address(pkt[IP].src) == ip_address(PRIVATE_IP):
-                # print("We sniffed a packet we are sending")
+                # #print("We sniffed a packet we are sending")
                 return
 
-            if ip_address(pkt[IP].src) == ip_address(AGENT_IP):
-                # print("We sniffed a packet we are sending to agent")
-                return
 
-            print("received pkt from private interface", pkt.sniffed_on, pkt.summary())
+            #print("received pkt from private interface", pkt.sniffed_on, pkt.summary())
             #incoming
             #if its outgoing, use NAT Table
             pkt[Ether].src      # accessing a field in the Ether Layer, not necessary for this lab
@@ -246,34 +153,33 @@ def process_pkt_private(pkt: Packet):
 
             src_ip = pkt[IP].src
             dst_ip = pkt[IP].dst
-            type_of_operation = None
 
             # https://scapy.readthedocs.io/en/latest/usage.html#stacking-layers
             # Stack a new packet like so
             # IP(src="xxx.xxx.xxx.xxx", dst="xxx.xxx.xxx.xxx", ttl=???) / ptk[TCP or ICMP, depends on pkt]
             # if its outgoing, look at the two things below
             if ICMP in pkt:
-                print('\tICMP Packet captured on private interface')
+                #print('\tICMP Packet captured on private interface')
                 
                 src_id = pkt[ICMP].id
                 
                 # Add it into icmp_mapping, if it doesn't already exist
                 # remember: icmp does not handle ports
-                pub_ip, pub_id = icmp_mapping.set(src_ip, src_id)
+                pub_ip, pub_id, type_of_operation = icmp_mapping.set(src_ip, src_id)
 
                 # Make new packet by updating Network Layer header, using public IP, public src (the ICMP id), and info from pkt
                 pkt[ICMP].id = pub_id
                 icmp_header = ICMP(id=pub_id, code=0, type=8)
                 new_pkt = IP(src=pub_ip, dst=dst_ip) / icmp_header
             elif TCP in pkt:
-                print('\tTCP Packet captured on private interface')
+                #print('\tTCP Packet captured on private interface')
                 
                 src_port = pkt[TCP].sport
 
                 # remember: TCP does handle ports
 
                 # Add it into icmp_mapping, if it doesn't already exist
-                pub_ip, pub_sport = tcp_udp_mapping.set(src_ip, src_port)
+                pub_ip, pub_sport, type_of_operation = tcp_udp_mapping.set(src_ip, src_port)
 
                 # UNDERSTAND: don't worry about internal, sending only private packets to public packets
                 # NEW TCP HEADER PASS SRC PORT AND DST PORT
@@ -283,21 +189,15 @@ def process_pkt_private(pkt: Packet):
                 tcp_header = TCP(sport=pub_sport, dport=dst_port) # transport layer header
 
                 new_pkt = IP(src=pub_ip, dst=dst_ip) / tcp_header / pkt[TCP].payload
-                print("T: ", pkt.show())
+                #print("T: ", pkt.show())
             elif UDP in pkt:
-                print('\tUDP Packet captured on private interface')
+                #print('\tUDP Packet captured on private interface')
                 
-                dcid = quic_dcid(pkt)
-
                 src_port = pkt[UDP].sport
 
-                if dcid is not None:
-                    print("QUIC Packet")
-                    pub_ip, pub_sport, type_of_operation = tcp_udp_mapping.quic_set(src_ip, src_port, dcid)
-                else:
-                    pub_ip, pub_sport = tcp_udp_mapping.set(src_ip, src_port)
+                pub_ip, pub_sport, type_of_operation = tcp_udp_mapping.set(src_ip, src_port)
 
-                print("UDP Mapping: ", pub_ip, pub_sport)
+                #print("UDP Mapping: ", pub_ip, pub_sport)
 
                 dst_port = pkt[UDP].dport
                 udp_header = UDP(sport=pub_sport, dport=dst_port) # transport layer header
@@ -310,18 +210,18 @@ def process_pkt_private(pkt: Packet):
 
             # make sure to send new packet to the correct network interface
             send(new_pkt, iface=PUBLIC_IFACE, verbose=False)
-        print(type_of_operation)
-        if type_of_operation is not None:
-            with open("quic_nat_cycles.txt", "a") as f:
-                f.write("{},{},\n".format(str(t.cycles), type_of_operation))
+        
+        with open("default_cycles.txt", "a") as f:
+            f.write("{}, {},\n".format(str(t.cycles), type_of_operation))
     except Exception as e:
-        print("ERROR: ", e)
+        #print("ERROR: ", e)
+        pass
 
 def process_pkt_public(pkt: Packet):
     try:
         if pkt[IP].src == PUBLIC_IP:
             return # skip unecessary packets
-        print("received pkt from public interface", pkt.sniffed_on, pkt.summary())
+        #print("received pkt from public interface", pkt.sniffed_on, pkt.summary())
         #incoming
         #if its outgoing, use NAT Table
         pkt[Ether].src      # accessing a field in the Ether Layer, not necessary for this lab
@@ -346,7 +246,7 @@ def process_pkt_public(pkt: Packet):
         # IP(src="xxx.xxx.xxx.xxx", dst="xxx.xxx.xxx.xxx", ttl=???) / ptk[TCP or ICMP, depends on pkt]
         # if its outgoing, look at the two things below
         if ICMP in pkt:
-            print('\tICMP Packet captured on public interface')
+            #print('\tICMP Packet captured on public interface')
             
             id = pkt[ICMP].id
 
@@ -363,7 +263,7 @@ def process_pkt_public(pkt: Packet):
             new_pkt = IP(src=src_ip, dst=priv_ip) / pkt[ICMP]
 
         elif TCP in pkt:
-            print('\tTCP Packet captured on private interface')
+            #print('\tTCP Packet captured on private interface')
 
             src_port = pkt[TCP].sport
             dst_port = pkt[TCP].dport
@@ -385,7 +285,7 @@ def process_pkt_public(pkt: Packet):
 
             new_pkt = IP(src=src_ip, dst=priv_ip) / tcp_header / pkt[TCP].payload
         elif UDP in pkt:
-            print('\tUDP Packet captured on private interface')
+            #print('\tUDP Packet captured on private interface')
 
             src_port = pkt[UDP].sport
             dst_port = pkt[UDP].dport
@@ -403,19 +303,43 @@ def process_pkt_public(pkt: Packet):
         # make sure to send new packet to the correct network interface
         send(new_pkt, iface=PRIVATE_IFACE, verbose=False)
     except Exception as e:
-        print("ERROR: ", e) 
+        #print("ERROR: ", e) 
+        pass
+
 
 def private_listener():
-    print("sniffing packets on the private interface")
+    #print("sniffing packets on the private interface")
     sniff(prn=process_pkt_private, iface=PRIVATE_IFACE, filter=FILTER)
 
 
 def public_listener():
-    print("sniffing packets on the public interface")
+    #print("sniffing packets on the public interface")
     sniff(prn=process_pkt_public, iface=PUBLIC_IFACE, filter=FILTER)
 
 
-def main():
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--privateIp', type=str, help='Client IP')
+    parser.add_argument('--publicIp', type=str, help='Server IP')
+    parser.add_argument('--privateIface', type=str, help='Client facing interface')
+    parser.add_argument('--publicIface', type=str, help='Server facing interface')
+    parser.add_argument('--privateSubnet', type=str, help='Client Subnet')
+
+    args = parser.parse_args()
+
+    PRIVATE_IFACE = args.privateIface
+    PRIVATE_IP = args.privateIp
+    PRIVATE_IP_subnet = args.privateSubnet
+
+    PUBLIC_IFACE = args.publicIface
+    PUBLIC_IP = args.publicIp
+
+    #print("Private IP: ", PRIVATE_IP)
+    #print("Public IP: ", PUBLIC_IP)
+    #print("Private Subnet: ", PRIVATE_IP_subnet)
+    #print("Private Interface: ", PRIVATE_IFACE)
+    #print("Public Interface: ", PUBLIC_IFACE)
+
     try:
         os.mkdir("logs")
     except FileExistsError:
@@ -434,7 +358,7 @@ def main():
 
     thread3 = Thread(target=print_mapping_loop)
 
-    print("starting multiple sniffing threads...")
+    #print("starting multiple sniffing threads...")
     thread1.start()
     thread2.start()
     # thread3.start()
@@ -442,5 +366,3 @@ def main():
     thread2.join()
     # thread3.join()
 
-
-main()

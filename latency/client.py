@@ -99,7 +99,7 @@ async def main(
                 
                 await client.send(str(time.time_ns()))
                 await asyncio.sleep(2)                
-                for port in range(20000, 20500):
+                for port in range(20000, 20100):
                     if is_closed(client):
                         break
                     client.change_connection_id()

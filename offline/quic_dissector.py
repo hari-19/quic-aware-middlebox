@@ -87,17 +87,17 @@ def quic_dcid(pkt) -> bytes | None:
             return False
 
         if quic_long_heuristic(udp_payload):
-            print("QUIC Long Header Packet")
+            # print("QUIC Long Header Packet")
             return extract_quic_dcid_long_pkt(udp_payload)
 
         elif quic_short_heuristic(udp_payload):
-            print("QUIC Short Header Packet")
+            # print("QUIC Short Header Packet")
             if len(udp_payload) < dcid_len:
                 return None
             else:
                 return extract_quic_dcid_short_pkt(udp_payload, dcid_len)
         else:
-            print("## Not QUIC Packet ##")
+            # print("## Not QUIC Packet ##")
             return None
     else:
         print("## Not UDP Packet ##")

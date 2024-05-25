@@ -11,12 +11,16 @@ def print(*args):
             f.write(str(arg) + " ")
         f.write("\n")
 
+registered_middleboxes = []
+
+middlebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+middlebox_socket.bind(('', 12001))
+
 class Mapping:
     data = {}
 
     def store(self, global_cid, new_cid):
         self.data[new_cid] = global_cid
-        # pass
     
     def get(self, new_cid):
         if new_cid in self.data.keys():
@@ -50,6 +54,10 @@ class Configuration:
 def store_cid(message):
     data = pickle.loads(message)
     mapping.store(data.original_cid, data.peer_cid)
+    
+    for ip, port in registered_middleboxes:
+        middlebox_socket.sendto(message, (ip, port))
+
 
 def get_cid(message):
     cid = message
@@ -64,22 +72,29 @@ def post_config_thread():
     while True:
         message, address = server_socket.recvfrom(1024)
         store_cid(message)
-    
-def get_config_thread():
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket.bind(('', 12001))
 
+def register_middlebox_thread():
     while True:
-        message, address = server_socket.recvfrom(1024)
-        # print("Received Request message: ", message.hex())
-        global_cid = get_cid(message)
+        message, address = middlebox_socket.recvfrom(1024)
+        ip, port = address
+        registered_middleboxes.append((ip, port))
+        print("Registered Middlebox: ", ip, port)
+
+# def get_config_thread():
+#     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#     server_socket.bind(('', 12001))
+
+#     while True:
+#         message, address = server_socket.recvfrom(1024)
+#         print("Received Request message: ", message.hex())
+#         global_cid = get_cid(message)
         
-        if global_cid is not None:
-            # print("Sending global_cid: ", global_cid.hex())
-            server_socket.sendto(global_cid, address)
-        else:
-            # print("Sending None global_cid")
-            server_socket.sendto(bytes(0), address)
+#         if global_cid is not None:
+#             print("Sending global_cid: ", global_cid.hex())
+#             server_socket.sendto(global_cid, address)
+#         else:
+#             print("Sending None global_cid")
+#             server_socket.sendto(bytes(0), address)
 
 def main():
     try:
@@ -90,7 +105,7 @@ def main():
     with open("logs/agent_log.txt", "w") as f:
         f.write("")
 
-    thread1 = Thread(target=get_config_thread)
+    thread1 = Thread(target=register_middlebox_thread)
     thread2 = Thread(target=post_config_thread)
    
     def print_all_mappings():
