@@ -10,3 +10,4 @@ __pycache__/
 latency_data.txt
 processing_time_output/
 latency_output/
+throughput_output/
