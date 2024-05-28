@@ -87,11 +87,11 @@ def run_naive_nat_processing_time():
     net["server"].cmdPrint("./venv/bin/python ./processing_time/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
     time.sleep(1)
     time.sleep(1)
-    for i in range(10):
+    for i in range(50):
         net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
     
-    for i in range(50):
-        net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
+    # for i in range(100):
+        # net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
     net.stop()
 
 
@@ -105,11 +105,10 @@ def run_quic_nat_processing_time():
     time.sleep(1)
     net["server"].cmdPrint("./venv/bin/python ./processing_time/server.py -c ./ssl/ssl_cert.pem -k ./ssl/ssl_key.pem --port 1000 -v &")
     time.sleep(1)
-    for i in range(10):
+
+    for i in range(50):
         net["client"].cmdPrint("./venv/bin/python ./processing_time/client.py --host 192.168.1.100 --port 1000 -v")
     
-    for i in range(50):
-        net["client"].cmdPrint("./venv/bin/python ./processing_time/client_dummy.py --host 192.168.1.100 --port 1000 -v")
     net.stop()
 
 
@@ -157,16 +156,16 @@ def run_quic_latency():
 def run_naive_nat_throughput():
     # topo = OneNetworkTopo()
     # topo = NATNetworkTopo()
+    topo = OneNATNetworkTopo()
     # topo = TwoNATNetworkTopo()
     # topo = ThreeNATNetworkTopo()
     # topo = FourNATNetworkTopo()
-    topo = FiveNATNetworkTopo()
-    # topo = OneNATNetworkTopo()
+    # topo = FiveNATNetworkTopo()
     net = Mininet(topo=topo, link=TCLink)
     # three_nat_ip_route(net)
     # two_nat_ip_route(net)
     # four_nat_ip_route(net)
-    five_nat_ip_route(net)
+    # five_nat_ip_route(net)
     net.start()
     # net['r1'].cmdPrint("./venv/bin/python3 ./quic_nat/NAT.py &")
     # # net['r1'].cmdPrint("./venv/bin/python3 ./naive_nat/NAT.py &")
@@ -207,7 +206,7 @@ def get_choice():
     print("3. Run Emulation of Proposed Implementation using NAT")
     print("4. Run Emulation of Proposed Implementation using RL")
     # return int(input("Enter your choice: "))
-    return 8
+    return 6
 
 if __name__ == "__main__":
     setLogLevel('info')
