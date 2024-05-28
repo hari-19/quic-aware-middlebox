@@ -171,7 +171,7 @@ def print_token_bucket(token_buckets):
             if flow_id[1] != 0:
                 line = "|{:^15} | {:^15} | {:^15} | {:^15} | {:^15} |".format(flow_id[0], flow_id[1], flow_id[2], flow_id[3], str(token_bucket.tokens))
             else:
-                line = "|{:^15} | {:^15} | {:^15} | {:^15} | {:^15} |".format(flow_id[0].hex(), "N/A", "N/A","N/A","N/A",  str(token_bucket.tokens))
+                line = "|{:^15} | {:^15} | {:^15} | {:^15} | {:^15} |".format(flow_id[0].hex(), "N/A", "N/A","N/A",  str(token_bucket.tokens))
             f.write(line + "\n")
             f.write(bound_line + "\n")
 

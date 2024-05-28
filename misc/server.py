@@ -15,10 +15,7 @@ logger = logging.getLogger("server")
 class DnsServerProtocol(QuicConnectionProtocol):
     def quic_event_received(self, event: QuicEvent):
         if isinstance(event, StreamDataReceived):
-
-            print("Received !!")
             last = event.data.decode()[-3:]
-            # logger.info("Last: %s", last)
             if last == "END":
                 with open("received.txt", "a+") as f:
                     f.write(event.data.decode()[:-3])
@@ -27,7 +24,6 @@ class DnsServerProtocol(QuicConnectionProtocol):
 
             with open("received.txt", "a+") as f:
                 f.write(event.data.decode())
-            # logger.info("Length of Data: %s, Data: %s", length, data)
 
 
 class SessionTicketStore:

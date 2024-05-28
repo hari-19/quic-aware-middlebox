@@ -67,7 +67,7 @@ class NATTable:
         # return random.randint(30001, 65535)
 
     def print_mappings(self):
-        with open("logs/nat_mappings.txt", "w") as f:
+        with open("logs/{}_nat_mappings.txt".format(PRIVATE_IFACE), "w") as f:
             now = datetime.datetime.now()
             f.write("Last Updated: "+ str(now) +"\n")
             f.write("No of mappings:" + str(len(self.data)) + "\n")
@@ -81,24 +81,6 @@ class NATTable:
                 # f.write(bound_line + "\n")
                 f.write(line + "\n")
                 f.write(bound_line + "\n")
-
-        # #print("Printing all mappings...")
-        # for key, value in self.data.items():
-        #     #print(key, " : ", value)
-        # #print("End of mappings")
-
-        # #print("Printing all QUIC GCID - LAN mappings...")
-        # #print("No of mappings:", len(self.quic_lan_map))
-        # for key, value in self.quic_lan_map.items():
-        #     #print(key.hex(), " : ", value)
-        # #print("End of mappings")
-
-        # #print("Printing all QUIC CID - GCID mappings...")
-        # #print("No of mappings:", len(self.quic_cids))
-        # for key, value in self.quic_cids.items():
-        #     #print(key.hex(), " : ", value)
-        # #print("End of mappings")
-
 
 
     def set(self, ip_src, id_src) -> Tuple[str, int]:
@@ -189,8 +171,7 @@ class NATTable:
         return new_ip_src, new_id_src
 
 
-icmp_mapping = NATTable()
-tcp_udp_mapping = NATTable()
+
 
 def process_pkt_private(pkt: Packet):
     try:
@@ -405,6 +386,7 @@ if __name__ == "__main__":
     parser.add_argument('--agentIp', type=str, help='Agent IP')
     parser.add_argument('--agentPort', type=int, help='Agent Port')
     parser.add_argument('--privateSubnet', type=str, help='Client Subnet')
+    parser.add_argument('--NATTable', action='store_true', help='Print NAT Table')
 
     args = parser.parse_args()
 
@@ -418,14 +400,8 @@ if __name__ == "__main__":
     AGENT_IP = args.agentIp
     AGENT_PORT = args.agentPort
 
-    #print("Private IP: ", PRIVATE_IP)
-    #print("Public IP: ", PUBLIC_IP)
-    #print("Private Subnet: ", PRIVATE_IP_subnet)
-    #print("Private Interface: ", PRIVATE_IFACE)
-    #print("Public Interface: ", PUBLIC_IFACE)
-    #print("Agent IP: ", AGENT_IP)
-    #print("Agent Port: ", AGENT_PORT)
-
+    icmp_mapping = NATTable()
+    tcp_udp_mapping = NATTable()    
 
     try:
         os.mkdir("logs")
@@ -445,11 +421,11 @@ if __name__ == "__main__":
 
     thread3 = Thread(target=print_mapping_loop)
 
-    #print("starting multiple sniffing threads...")
     thread1.start()
     thread2.start()
-    # thread3.start()
+    if args.NATTable:
+        thread3.start()
+        thread3.join()
     thread1.join()
     thread2.join()
-    # thread3.join()
 

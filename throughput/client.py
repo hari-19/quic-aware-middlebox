@@ -91,7 +91,8 @@ async def main(
                 local_port=0
             ) as client:
                 client = cast(DosClientProtocol, client)
-
+                
+                # with open("data.txt", "r") as f:
                 with open("2MB.html", "r") as f:
                     data = f.read()
                     await client.send(data)

@@ -9,16 +9,27 @@ from aioquic.quic.events import QuicEvent, StreamDataReceived
 from aioquic.quic.logger import QuicFileLogger
 from aioquic.tls import SessionTicket
 import struct
+import time
 
 logger = logging.getLogger("server")
 
 class DnsServerProtocol(QuicConnectionProtocol):
+    start_time = None
+
     def quic_event_received(self, event: QuicEvent):
         if isinstance(event, StreamDataReceived):
+            if self.start_time == None:
+                logger.debug("Start Time None")
+                self.start_time = time.time_ns()
+
             last = event.data.decode()[-3:]
             if last == "END":
                 with open("received.txt", "a+") as f:
                     f.write(event.data.decode()[:-3])
+                
+                end_time = time.time_ns()
+                with open("throughput_data.txt", "a") as f:
+                    f.write("{}\n".format(end_time-self.start_time))
                 self.close()
                 return
 

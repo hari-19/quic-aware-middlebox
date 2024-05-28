@@ -3,7 +3,6 @@ import time
 from scapy.all import *
 import logging
 import datetime
-from quic_dissector import quic_dcid
 
 import argparse
 
