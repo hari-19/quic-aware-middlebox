@@ -11,7 +11,7 @@ def print(*args):
             f.write(str(arg) + " ")
         f.write("\n")
 
-registered_middleboxes = []
+registered_middleboxes = {}
 
 middlebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 middlebox_socket.bind(('', 12001))
@@ -55,7 +55,7 @@ def store_cid(message):
     data = pickle.loads(message)
     mapping.store(data.original_cid, data.peer_cid)
     
-    for ip, port in registered_middleboxes:
+    for ip, port in registered_middleboxes[data.original_cid]:
         middlebox_socket.sendto(message, (ip, port))
 
 
@@ -77,8 +77,29 @@ def register_middlebox_thread():
     while True:
         message, address = middlebox_socket.recvfrom(1024)
         ip, port = address
-        registered_middleboxes.append((ip, port))
-        print("Registered Middlebox: ", ip, port)
+        dcid = message
+
+        print("Received Request message: ", message.hex())
+        global_cid = get_cid(message)
+
+        if global_cid is not None:
+            print("Sending global_cid: ", global_cid.hex())
+            data = Configuration(global_cid, dcid)
+            serialized_obj = pickle.dumps(data)
+            middlebox_socket.sendto(serialized_obj, address)
+            if global_cid not in registered_middleboxes.keys():
+                registered_middleboxes[global_cid] = [(ip, port)]
+            else:
+                registered_middleboxes[global_cid].append((ip, port))
+        else:
+            print("Sending None global_cid")
+            data = Configuration(dcid, dcid)
+            serialized_obj = pickle.dumps(data)
+            middlebox_socket.sendto(serialized_obj, address)
+            if dcid not in registered_middleboxes.keys():
+                registered_middleboxes[dcid] = [(ip, port)]
+            else:
+                registered_middleboxes[dcid].append((ip, port))
 
 # def get_config_thread():
 #     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

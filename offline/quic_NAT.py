@@ -27,27 +27,42 @@ FILTER = "tcp or icmp or udp"
 #         f.write("\n")
 
 
-# def get_gcid_from_agent(cid: bytes):
-#     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#     try:
-#         sock.sendto(cid, (AGENT_IP, AGENT_PORT))
-#         #print("CID sent to configuration agent succefully")
-#         message, address = sock.recvfrom(1024)
-#         global_cid = message
-#         if not global_cid:
-#             #print("Received message:", global_cid.hex())
-#             return None
-#         #print("Recieved GCID from Agent", global_cid.hex())
-#         return global_cid
-#     except Exception as e:
-#         #print("Error sending CID to configuration agent")
-#         #print(e)
-#         pass
-#     finally:
-#         sock.close()
+class Configuration:
+    def __init__(self, original_cid, peer_cid):
+        self.original_cid = original_cid
+        self.peer_cid = peer_cid
+        
+def get_gcid_from_agent(cid: bytes):
+    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock = sock_register_update
 
-#     return None
+    try:
+        sock.sendto(cid, (AGENT_IP, AGENT_PORT))
+        while True:
+            if cid in quic_cids.keys():
+                return quic_cids[cid]
+        #print("CID sent to configuration agent succefully")
+    #     message, address = sock.recvfrom(1024)
+    #     global_cid = message
+    #     if not global_cid:
+    #         #print("Received message:", global_cid.hex())
+    #         return None
+    #     #print("Recieved GCID from Agent", global_cid.hex())
+    #     return global_cid
+    except Exception as e:
+        # print("Error sending CID to configuration agent")
+        # print(e)
+        pass
+    # finally:
+    #     sock.close()
+
+    return None
+
+
 quic_cids = {}
+
+sock_register_update = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock_register_update.bind(('', 15000))
 
 class NATTable:
 
@@ -146,11 +161,11 @@ class NATTable:
         # check quic data for cid
         if dst_cid in self.quic_cids.keys():
             gcid = self.quic_cids[dst_cid]
-        # else:
-        #     # get gcid from agent
-        #     gcid = get_gcid_from_agent(dst_cid)
-        #     if gcid is not None:
-        #         self.quic_cids.update({dst_cid: gcid})
+        else:
+            # get gcid from agent
+            gcid = get_gcid_from_agent(dst_cid)
+            if gcid is not None:
+                self.quic_cids.update({dst_cid: gcid})
 
         # if gcid is not in the quic_cids, it means that gcid is new
         #print("DCID: ", dst_cid.hex())
@@ -397,14 +412,14 @@ def public_listener():
 
 
 def agent_update_thread():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', 15000))
-    #print(AGENT_IP)
-    #print(AGENT_PORT)
-    sock.sendto("Register...".encode(), (AGENT_IP, int(AGENT_PORT)))
+    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # sock.bind(('', 15000))
+    # #print(AGENT_IP)
+    # #print(AGENT_PORT)
+    # sock.sendto("Register...".encode(), (AGENT_IP, int(AGENT_PORT)))
 
     while True:
-        message, address = sock.recvfrom(1024)
+        message, address = sock_register_update.recvfrom(1024)
         data = pickle.loads(message)
         quic_cids.update({data.peer_cid: data.original_cid})
         #print("Received CID from Agent: ", data.peer_cid.hex(), " : ", data.original_cid.hex())
